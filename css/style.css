@@ -84,7 +84,9 @@ section { position: relative; padding: clamp(80px, 12vw, 160px) var(--pad); }
   position: fixed; inset: 0; z-index: 200; background: var(--ink); color: var(--cloud);
   display: none; flex-direction: column; justify-content: flex-end; padding: var(--pad);
 }
-.js .loader { display: flex; }
+.js .loader { display: flex; animation: loader-failsafe .6s 7s forwards; }
+/* if scripts never run (blocked CDN, old cache), the loader still gets out of the way */
+@keyframes loader-failsafe { to { opacity: 0; visibility: hidden; } }
 .loader__inner { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
 .loader__name { font-family: var(--serif); font-style: italic; font-size: clamp(32px, 6vw, 72px); line-height: 1; }
 .loader__count { font-size: clamp(64px, 16vw, 220px); font-weight: 600; letter-spacing: -.06em; line-height: .8; font-variant-numeric: tabular-nums; }

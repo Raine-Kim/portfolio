@@ -47,8 +47,8 @@
     }
 
     const alias = $("[data-alias]");
-    if (P.alias) alias.textContent = `${P.name || ""} — goes by ${P.alias}`;
-    else alias.hidden = true;
+    if (alias && P.alias) alias.textContent = `${P.name || ""} — goes by ${P.alias}`;
+    else if (alias) alias.hidden = true;
 
     $("[data-socials]").innerHTML = (P.socials || []).filter(s => s.url).map(s =>
       `<li><a href="${esc(s.url)}" target="_blank" rel="noopener" data-hover>${esc(s.label)} ↗</a></li>`).join("");
@@ -488,23 +488,17 @@
   /* ------------------------------------------------------------------
      Boot
      ------------------------------------------------------------------ */
-  renderProfile();
-  renderMarquee();
-  renderWork();
-  renderServices();
-  renderProcess();
-  initUI();
-  initCursor();
-  try { motion(); } catch (err) { console.error(err); }
-
-  // Fail-safe: never leave the loader up if something above broke or CDNs are blocked
-  setTimeout(() => {
-    const loader = $(".loader");
-    if (loader && getComputedStyle(loader).display !== "none" && !(window.gsap && !reduced)) loader.style.display = "none";
-  }, 200);
+  // Fail-safe first, so a broken step below can never leave the loader stuck
   setTimeout(() => {
     const loader = $(".loader");
     if (loader && getComputedStyle(loader).display !== "none") loader.style.display = "none";
     $$(".reveal-up").forEach(el => { if (getComputedStyle(el).opacity === "0") { el.style.opacity = 1; el.style.transform = "none"; } });
   }, 5000);
+
+  const hideLoader = () => { const l = $(".loader"); if (l) l.style.display = "none"; };
+  [renderProfile, renderMarquee, renderWork, renderServices, renderProcess, initUI, initCursor].forEach(step => {
+    try { step(); } catch (err) { console.error(err); }
+  });
+  try { motion(); } catch (err) { console.error(err); hideLoader(); }
+  if (!(window.gsap && window.ScrollTrigger) || reduced) hideLoader();
 })();
