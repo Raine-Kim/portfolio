@@ -10,7 +10,8 @@
 
 window.PORTFOLIO = {
   profile: {
-    name: "Raine Kim",
+    name: "Sunghyun Kim",
+    alias: "Raine",                   // 영어 이름 (About 섹션에 "Goes by Raine" 으로 표시)
     role: "Web Designer / Front-end Developer",
     location: "Toronto, ON",
     timezone: "America/Toronto",
@@ -23,12 +24,6 @@ window.PORTFOLIO = {
       "I design interfaces and then build them myself — responsive, fast, and on-brand. " +
       "From campaign landing pages to full brand sites, I care about the whole path: " +
       "the idea, the pixels, the code, and the results after launch.",
-    stats: [
-      { value: 1, suffix: "+", label: "Years in web design" },
-      { value: 12, suffix: "", label: "Sites designed & built" },
-      { value: 5, suffix: "", label: "Industries served" },
-      { value: 100, suffix: "%", label: "Responsive, every time" }
-    ],
     socials: [
       { label: "GitHub", url: "https://github.com/Raine-Kim" },
       { label: "LinkedIn", url: "" },

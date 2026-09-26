@@ -46,11 +46,9 @@
       new IntersectionObserver(([e]) => (e.isIntersecting ? v.play().catch(() => {}) : v.pause()), { threshold: .25 }).observe(v);
     }
 
-    $("[data-stats]").innerHTML = (P.stats || []).map(s => `
-      <div class="stat">
-        <div class="stat__value"><span data-counter="${Number(s.value) || 0}">0</span>${s.suffix ? `<sup>${esc(s.suffix)}</sup>` : ""}</div>
-        <div class="stat__label">${esc(s.label)}</div>
-      </div>`).join("");
+    const alias = $("[data-alias]");
+    if (P.alias) alias.textContent = `${P.name || ""} — goes by ${P.alias}`;
+    else alias.hidden = true;
 
     $("[data-socials]").innerHTML = (P.socials || []).filter(s => s.url).map(s =>
       `<li><a href="${esc(s.url)}" target="_blank" rel="noopener" data-hover>${esc(s.label)} ↗</a></li>`).join("");

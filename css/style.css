@@ -282,7 +282,8 @@ section { position: relative; padding: clamp(80px, 12vw, 160px) var(--pad); }
 .about__portrait img { width: 100%; height: 115%; object-fit: cover; }
 .about__portrait-fallback { position: absolute; inset: 0; display: grid; place-items: center; background: conic-gradient(from 90deg at 30% 70%, var(--mocha), var(--mocha-deep), var(--lavender), var(--mocha)); }
 .about__portrait-fallback span { font-family: var(--serif); font-style: italic; font-size: clamp(100px, 16vw, 240px); color: var(--cloud); line-height: 1; }
-.about__statement { margin: 0 0 56px; font-size: clamp(26px, 3.2vw, 50px); line-height: 1.12; letter-spacing: -.035em; font-weight: 450; }
+.about__alias { margin: 0 0 20px; color: var(--fg-soft); }
+.about__statement { margin: 0 0 40px; font-size: clamp(26px, 3.2vw, 50px); line-height: 1.12; letter-spacing: -.035em; font-weight: 450; }
 .about__statement em { font-family: var(--serif); color: var(--mocha); }
 [data-theme="dark"] .about__statement em { color: var(--lilac); }
 .about__statement .word { transition: opacity .2s; }

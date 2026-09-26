@@ -1,4 +1,4 @@
-# Raine Kim — Portfolio
+# Sunghyun (Raine) Kim — Portfolio
 
 Web Designer / Front-end Developer 포트폴리오 사이트입니다.
 빌드 과정 없는 순수 **HTML / CSS / JavaScript**라서 Cloudflare Pages에 그대로 올리면 됩니다.
