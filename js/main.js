@@ -2,6 +2,7 @@
   "use strict";
 
   const DATA = window.PORTFOLIO || { profile: {}, projects: [], categories: [], services: [], process: [], skills: [] };
+  DATA.projects = window.PORTFOLIO_PROJECTS || DATA.projects || [];
   const P = DATA.profile || {};
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -99,7 +100,8 @@
 
     $("[data-work-count]").textContent = `${String(projects.length).padStart(2, "0")} projects`;
 
-    const cats = ["All", ...(DATA.categories || [])].filter(c => c === "All" || projects.some(p => p.category === c));
+    const known = (DATA.categories || []).filter(c => projects.some(p => p.category === c));
+    const cats = ["All", ...new Set([...known, ...projects.map(p => p.category).filter(Boolean)])];
     $("[data-filters]").innerHTML = cats.map((c, i) => {
       const n = c === "All" ? projects.length : projects.filter(p => p.category === c).length;
       return `<button class="filter" role="tab" aria-selected="${i === 0}" data-filter="${esc(c)}" data-magnetic>${esc(c)}<sup>${n}</sup></button>`;
@@ -192,7 +194,7 @@
       </header>
       <div class="case__gallery">
         ${(p.cover && !gallery.length) ? galleryItem({ src: p.cover }) : ""}
-        ${gallery.length ? gallery.map(galleryItem).join("") : (!p.cover ? `<div class="case__empty">Images & videos coming soon.<br><br><span class="mono">Add them in <code>data/projects.js</code> → gallery</span></div>` : "")}
+        ${gallery.length ? gallery.map(galleryItem).join("") : (!p.cover ? `<div class="case__empty">Images & videos coming soon.<br><br><span class="mono">Upload them on the <code>/admin</code> page</span></div>` : "")}
       </div>`;
     caseEl.hidden = false;
     $(".case__panel").scrollTop = 0;

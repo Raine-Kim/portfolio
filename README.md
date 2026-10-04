@@ -11,40 +11,35 @@ Web Designer / Front-end Developer 포트폴리오 사이트입니다.
 ## 폴더 구조
 
 ```
-index.html          페이지 뼈대
-css/style.css       스타일 (컬러 토큰은 맨 위 :root)
-js/main.js          렌더링 + 애니메이션
-data/projects.js    ← 내용은 전부 여기서 수정
-media/              ← 사진, 영상, 이력서 PDF 업로드
+index.html          메인 페이지
+admin.html          프로젝트 관리 페이지 (/admin)
+css/, js/           스타일과 스크립트
+data/projects.js    프로필, 서비스, 프로세스, 스킬
+data/work.js        Selected work 프로젝트 목록 (admin 페이지가 저장)
+media/              사진, 영상, 이력서 PDF
 _headers            Cloudflare Pages 캐시/보안 헤더
 ```
 
-## 사진·영상 올리기
+## 프로젝트 올리고 수정하기 — /admin
 
-1. `media/projects/<프로젝트이름>/` 폴더에 파일을 넣습니다.
-   - 이미지: `.jpg` `.png` `.webp` `.avif` (가로 2000px 이하, WebP 권장)
-   - 영상: `.mp4` `.webm`. **Cloudflare Pages는 파일 하나당 25MB까지만 올라갑니다.** 그보다 큰 영상은 YouTube나 Vimeo에 올리고 `embed`로 넣으세요.
-2. `data/projects.js`에서 해당 프로젝트에 경로를 적습니다.
+사이트 주소 뒤에 `/admin` 을 붙여 엽니다. 프로젝트 추가·수정·삭제·순서 변경, 커버 이미지와 호버 영상, 상세 갤러리(사진·영상·YouTube/Vimeo 링크), 담당 범위(%)를 화면에서 편집할 수 있습니다.
 
-```js
-{
-  slug: "harbour-noodle",
-  title: "Harbour Noodle Bar",
-  cover: "media/projects/harbour-noodle/cover.jpg",       // 카드 썸네일
-  coverVideo: "media/projects/harbour-noodle/hover.mp4",  // 마우스 올리면 재생 (선택)
-  scope: { Design: 100, "HTML/CSS": 100, JavaScript: 50 }, // 담당 범위 %
-  link: "https://live-site.com",
-  gallery: [
-    { type: "image", src: "media/projects/harbour-noodle/01.jpg", caption: "Home — desktop" },
-    { type: "video", src: "media/projects/harbour-noodle/scroll.mp4", caption: "Scroll interaction" },
-    { type: "embed", src: "https://www.youtube.com/embed/VIDEO_ID", caption: "Full walkthrough" }
-  ]
-}
-```
+**게시하기**를 누르면 올린 파일과 `data/work.js` 가 GitHub 저장소에 커밋 하나로 저장되고, Cloudflare가 1~2분 안에 다시 배포합니다.
 
-- `cover`를 비워두면 프로젝트 `color`로 만든 그래픽 카드가 대신 나옵니다.
-- 프로필 사진은 `profile.portrait`, 이력서는 `profile.resume`, 히어로 아래 쇼릴 영상은 `profile.showreel`에 경로를 넣으면 나타납니다.
-- **웹에서 바로 올리기**: GitHub 저장소 → 폴더로 이동 → *Add file → Upload files*. 커밋하면 Cloudflare가 1~2분 안에 자동으로 다시 배포합니다.
+### 처음 한 번: GitHub 토큰 연결
+
+1. GitHub → Settings → Developer settings → Fine-grained tokens → **Generate new token**
+2. **Repository access**: Only select repositories → 이 저장소만 선택
+3. **Permissions → Repository permissions → Contents**: Read and write
+4. 만든 토큰을 admin 페이지의 **GitHub 연결** 칸에 붙여넣고 연결
+
+- 토큰은 그 브라우저에만 저장되고 api.github.com 으로만 전송됩니다. 토큰이 없으면 누구도 저장할 수 없습니다.
+- 공용 컴퓨터에서는 작업 후 **토큰 지우기**를 누르세요.
+- 파일은 하나당 25MB까지입니다 (Cloudflare Pages 제한). 더 큰 영상은 YouTube/Vimeo에 올리고 **영상 링크 추가**를 쓰세요.
+
+### 프로필 사진, 이력서, 쇼릴
+
+`media/` 에 파일을 올리고 `data/projects.js` 의 `profile.portrait`, `profile.resume`, `profile.showreel` 에 경로를 적습니다.
 
 ## 로컬에서 보기
 
