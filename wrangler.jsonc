@@ -1,0 +1,10 @@
+{
+  // Cloudflare Workers static-assets deploy (Workers Builds runs `npx wrangler deploy`)
+  "name": "portfolio",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  }
+}
