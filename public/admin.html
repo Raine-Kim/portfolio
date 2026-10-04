@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/admin.css?v=1">
+  <link rel="stylesheet" href="css/admin.css?v=2">
 </head>
 <body>
   <header class="top">
@@ -21,40 +21,25 @@
       </div>
     </div>
     <div class="top__actions">
-      <button class="btn btn--ghost" type="button" data-toggle-settings>GitHub 연결</button>
+      <button class="btn btn--ghost" type="button" data-logout>잠그기</button>
       <a class="btn btn--ghost" href="./#work" target="_blank" rel="noopener">사이트 보기 ↗</a>
       <button class="btn btn--primary" type="button" data-publish disabled>게시하기</button>
     </div>
   </header>
 
-  <!-- GitHub connection -->
-  <section class="settings" data-settings hidden>
-    <div class="settings__grid">
-      <label>저장소 (owner/repo)
-        <input type="text" data-cfg="repo" placeholder="Raine-Kim/portfolio" autocomplete="off">
+  <!-- Password gate -->
+  <div class="lock" data-lock>
+    <form class="lock__card" data-login>
+      <span class="top__mark">S</span>
+      <h2>Selected work <em>admin</em></h2>
+      <label>비밀번호
+        <input type="password" data-password autocomplete="current-password" inputmode="numeric" required autofocus>
       </label>
-      <label>브랜치
-        <input type="text" data-cfg="branch" placeholder="main" autocomplete="off">
-      </label>
-      <label class="settings__token">GitHub 토큰 (직접 붙여넣기)
-        <input type="password" data-cfg="token" placeholder="github_pat_…" autocomplete="off" spellcheck="false">
-      </label>
-      <div class="settings__btns">
-        <button class="btn btn--primary" type="button" data-connect>연결</button>
-        <button class="btn btn--ghost" type="button" data-disconnect>토큰 지우기</button>
-      </div>
-    </div>
-    <details class="settings__help">
-      <summary>토큰 만드는 법</summary>
-      <ol>
-        <li>GitHub → Settings → Developer settings → <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Fine-grained tokens → Generate new token</a></li>
-        <li><b>Repository access</b>: Only select repositories → 이 포트폴리오 저장소 하나만 선택</li>
-        <li><b>Permissions → Repository permissions → Contents</b>: Read and write</li>
-        <li>만든 토큰을 위 칸에 붙여넣고 <b>연결</b></li>
-      </ol>
-      <p>토큰은 이 브라우저에만 저장되고 api.github.com 으로만 전송됩니다. 공용 컴퓨터에서는 작업 후 <b>토큰 지우기</b>를 눌러주세요.</p>
-    </details>
-  </section>
+      <p class="lock__error" data-login-error role="alert"></p>
+      <button class="btn btn--primary" type="submit">들어가기</button>
+      <a class="lock__back" href="./">← 사이트로 돌아가기</a>
+    </form>
+  </div>
 
   <main class="layout">
     <aside class="side">
@@ -74,6 +59,6 @@
   <div class="toast" data-toast role="status" aria-live="polite"></div>
 
   <script src="data/projects.js?v=4"></script>
-  <script src="js/admin.js?v=1"></script>
+  <script src="js/admin.js?v=2"></script>
 </body>
 </html>

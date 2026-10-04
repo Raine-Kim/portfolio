@@ -3,14 +3,13 @@
 
   /* ------------------------------------------------------------------
      Selected work admin
-     Edits data/work.js and uploads media to media/projects/<slug>/,
-     saved to the GitHub repo as ONE commit (Cloudflare Pages then redeploys).
+     Talks to the Worker API in src/worker.js. Projects and uploaded media
+     are stored in Cloudflare KV; a password unlocks the page.
      ------------------------------------------------------------------ */
-  const DATA_PATH = "data/work.js";
-  const MEDIA_ROOT = "media/projects";
-  const MAX_BYTES = 25 * 1024 * 1024; // Cloudflare Pages per-file limit
-  const CFG_KEY = "portfolio-admin";
-  const IMAGE_RE = /\.(jpe?g|png|webp|avif|gif|svg)$/i;
+  const MEDIA_ROOT = "api/media";
+  const MAX_BYTES = 25 * 1024 * 1024; // Cloudflare KV per-value limit
+  const TOKEN_KEY = "portfolio-admin-session";
+  const IMAGE_RE = /\.(jpe?g|png|webp|avif|gif)$/i;
   const VIDEO_RE = /\.(mp4|webm|mov|m4v)$/i;
   const SWATCHES = ["#A47864", "#FF5B2E", "#7C6CF2", "#2F4A3A", "#E8B4B8", "#D9A441", "#1A1714", "#3E6FB0"];
   const DEFAULT_SCOPE = [["Design", 100], ["HTML/CSS", 100], ["JavaScript", 50]];
@@ -26,17 +25,12 @@
     sel: -1,
     dirty: false,
     busy: false,
-    loadedText: null,          // work.js as it was when loaded (to detect outside edits)
-    pending: new Map(),        // repo path -> File waiting to be uploaded
-    previews: new Map(),       // repo path -> object URL (kept after publish until deploy catches up)
-    deleted: new Set(),        // repo paths to remove on publish
-    cfg: { repo: "Raine-Kim/portfolio", branch: "main", token: "" },
-    connected: false
+    pending: new Map(),        // media path -> File waiting to be uploaded
+    previews: new Map(),       // media path -> object URL for files picked in this session
+    deleted: new Set(),        // media paths to remove on publish
+    token: ""
   };
-
-  /* ---------- config ---------- */
-  try { Object.assign(state.cfg, JSON.parse(localStorage.getItem(CFG_KEY) || "{}")); } catch (e) {}
-  const saveCfg = () => { try { localStorage.setItem(CFG_KEY, JSON.stringify(state.cfg)); } catch (e) {} };
+  try { state.token = localStorage.getItem(TOKEN_KEY) || ""; } catch (e) {}
 
   /* ---------- UI helpers ---------- */
   const toastEl = $("[data-toast]");
@@ -59,18 +53,12 @@
     btn.classList.toggle("is-dirty", state.dirty && !state.busy);
     if (state.busy) return;
     const n = state.pending.size;
-    if (state.dirty) setStatus(`저장 안 된 변경 있음${n ? ` · 올릴 파일 ${n}개` : ""}${state.connected ? "" : " · GitHub 연결 필요"}`, "warn");
-    else setStatus(state.connected ? `연결됨: ${state.cfg.repo} (${state.cfg.branch})` : "GitHub 연결 전 — 보기만 가능합니다", state.connected ? "ok" : "");
-    $("[data-toggle-settings]").textContent = state.connected ? "GitHub 연결됨 ✓" : "GitHub 연결";
+    if (state.dirty) setStatus(`저장 안 된 변경 있음${n ? ` · 올릴 파일 ${n}개` : ""} — 게시하기를 눌러주세요`, "warn");
+    else setStatus("모두 저장됨", "ok");
   }
   function markDirty() { state.dirty = true; refreshTop(); }
 
   /* ---------- data <-> internal form ---------- */
-  function parseWork(text) {
-    const i = text.indexOf("=");
-    if (i < 0) throw new Error("data/work.js 형식을 읽을 수 없습니다");
-    return JSON.parse(text.slice(i + 1).trim().replace(/;\s*$/, ""));
-  }
   function toInternal(p) {
     return {
       slug: p.slug || "", title: p.title || "", type: p.type || "", category: p.category || baseCategories[0],
@@ -92,9 +80,6 @@
       gallery: p.gallery.map(g => ({ type: g.type, src: g.src, ...(g.caption.trim() ? { caption: g.caption.trim() } : {}) }))
     };
   }
-  const serialize = () =>
-    "/* Selected work — admin 페이지(/admin)에서 자동으로 저장되는 파일입니다. */\n" +
-    "window.PORTFOLIO_PROJECTS = " + JSON.stringify(state.projects.map(toPublic), null, 2) + ";\n";
 
   /* ---------- media paths ---------- */
   function previewUrl(path) {
@@ -109,7 +94,7 @@
       state.pending.delete(path);
       URL.revokeObjectURL(state.previews.get(path));
       state.previews.delete(path);
-    } else if (path.startsWith("media/")) state.deleted.add(path);
+    } else if (path.startsWith(MEDIA_ROOT + "/")) state.deleted.add(path);
   }
   function stageFile(p, file) {
     if (!p.slug) { toast("제목을 먼저 입력해 주세요 (폴더 이름으로 씁니다)", true); return null; }
@@ -406,66 +391,26 @@
     $('[data-f="title"]', editor).focus();
   });
 
-  /* ---------- GitHub API ---------- */
-  async function gh(path, opts = {}) {
-    const res = await fetch(`https://api.github.com/repos/${state.cfg.repo}${path}`, {
+  /* ---------- API ---------- */
+  async function api(path, opts = {}) {
+    const res = await fetch("api" + path, {
       ...opts,
-      headers: {
-        Accept: opts.raw ? "application/vnd.github.raw+json" : "application/vnd.github+json",
-        Authorization: `Bearer ${state.cfg.token}`,
-        "X-GitHub-Api-Version": "2022-11-28",
-        ...(opts.body ? { "Content-Type": "application/json" } : {})
-      }
+      headers: { ...(state.token ? { Authorization: `Bearer ${state.token}` } : {}), ...(opts.headers || {}) }
     });
+    let data = null;
+    try { data = await res.json(); } catch (e) {}
     if (!res.ok) {
-      let detail = "";
-      try { detail = (await res.json()).message || ""; } catch (e) {}
-      const hint = res.status === 401 ? "토큰이 올바르지 않거나 만료됐습니다."
-        : res.status === 403 || res.status === 404 ? "저장소 이름과 토큰 권한(Contents: Read and write)을 확인해 주세요."
-        : "";
-      const err = new Error(`GitHub ${res.status}${detail ? ` — ${detail}` : ""}${hint ? `\n${hint}` : ""}`);
+      const err = new Error((data && data.error) || `요청 실패 (${res.status})`);
       err.status = res.status;
+      if (res.status === 401 && path !== "/login") lock("로그인이 만료됐습니다. 다시 들어와 주세요.");
       throw err;
     }
-    return opts.raw ? res.text() : res.json();
-  }
-  const fileToBase64 = file => new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result).split(",")[1] || "");
-    r.onerror = () => reject(r.error);
-    r.readAsDataURL(file);
-  });
-  const remoteWork = () => gh(`/contents/${DATA_PATH}?ref=${encodeURIComponent(state.cfg.branch)}`, { raw: true });
-
-  async function connect(silent = false) {
-    if (!state.cfg.token || !/^[\w.-]+\/[\w.-]+$/.test(state.cfg.repo)) {
-      if (!silent) toast("저장소(owner/repo)와 토큰을 입력해 주세요", true);
-      return false;
-    }
-    try {
-      const repo = await gh("");
-      if (repo.permissions && !repo.permissions.push) throw new Error("이 토큰에는 쓰기 권한이 없습니다. Contents: Read and write 로 다시 만들어 주세요.");
-      state.connected = true;
-      saveCfg();
-      if (!state.dirty) {
-        // GitHub has the newest version (the deployed copy can lag a minute behind)
-        try { load(await remoteWork()); } catch (e) { if (e.status !== 404) throw e; }
-      }
-      if (!silent) { toast("GitHub에 연결됐습니다"); $("[data-settings]").hidden = true; }
-      refreshTop();
-      return true;
-    } catch (err) {
-      state.connected = false;
-      refreshTop();
-      toast(err.message, true);
-      return false;
-    }
+    return data;
   }
 
-  function load(text) {
-    state.projects = parseWork(text).map(toInternal);
-    state.loadedText = text;
-    state.sel = Math.min(Math.max(state.sel, 0), state.projects.length - 1);
+  function load(projects) {
+    state.projects = (projects || []).map(toInternal);
+    state.sel = state.projects.length ? Math.min(Math.max(state.sel, 0), state.projects.length - 1) : -1;
     renderList(); renderEditor();
   }
 
@@ -483,95 +428,85 @@
 
   async function publish() {
     if (state.busy || !state.dirty || !validate()) return;
-    if (!state.connected && !(await connect(true))) {
-      $("[data-settings]").hidden = false;
-      toast("게시하려면 먼저 GitHub에 연결해 주세요", true);
-      return;
-    }
     state.busy = true; refreshTop();
-    const branch = encodeURIComponent(state.cfg.branch);
     try {
-      setStatus("저장소 확인 중…", "warn");
-      const ref = await gh(`/git/ref/heads/${branch}`);
-      const head = ref.object.sha;
-      const commit = await gh(`/git/commits/${head}`);
-
-      // someone (or another tab) changed work.js since this page loaded it?
-      let remote = null;
-      try { remote = await remoteWork(); } catch (e) { if (e.status !== 404) throw e; }
-      if (remote !== null && state.loadedText !== null && remote.replace(/\r\n/g, "\n") !== state.loadedText.replace(/\r\n/g, "\n")) {
-        if (!confirm("이 페이지를 연 뒤에 저장소의 프로젝트 목록이 바뀌었습니다.\n지금 화면의 내용으로 덮어쓸까요?")) { state.busy = false; refreshTop(); return; }
-      }
-
+      // 1) upload new files  2) save the list  3) remove files nothing points at any more
       const used = new Set(allPaths());
       const uploads = [...state.pending].filter(([path]) => used.has(path));
-      const tree = [];
       let done = 0;
       for (const [path, file] of uploads) {
         setStatus(`파일 올리는 중 ${++done}/${uploads.length} — ${file.name}`, "warn");
-        const blob = await gh("/git/blobs", { method: "POST", body: JSON.stringify({ content: await fileToBase64(file), encoding: "base64" }) });
-        tree.push({ path, mode: "100644", type: "blob", sha: blob.sha });
+        await api(path.slice("api".length), { method: "PUT", body: file, headers: { "Content-Type": file.type || "application/octet-stream" } });
+        state.pending.delete(path);
       }
-
-      // remove files nothing points at any more (only ones that really exist in the repo)
-      const toDelete = [...state.deleted].filter(path => !used.has(path));
-      if (toDelete.length) {
-        const full = await gh(`/git/trees/${commit.tree.sha}?recursive=1`);
-        const existing = new Set(full.tree.map(t => t.path));
-        toDelete.filter(path => existing.has(path)).forEach(path => tree.push({ path, mode: "100644", type: "blob", sha: null }));
+      setStatus("저장하는 중…", "warn");
+      await api("/work", { method: "PUT", body: JSON.stringify({ projects: state.projects.map(toPublic) }), headers: { "Content-Type": "application/json" } });
+      for (const path of [...state.deleted].filter(p => !used.has(p))) {
+        try { await api(path.slice("api".length), { method: "DELETE" }); } catch (e) { if (e.status === 401) throw e; }
       }
-
-      const text = serialize();
-      tree.push({ path: DATA_PATH, mode: "100644", type: "blob", content: text });
-
-      setStatus("커밋 만드는 중…", "warn");
-      const newTree = await gh("/git/trees", { method: "POST", body: JSON.stringify({ base_tree: commit.tree.sha, tree }) });
-      const newCommit = await gh("/git/commits", { method: "POST", body: JSON.stringify({
-        message: `Update selected work (${state.projects.length} projects${uploads.length ? `, ${uploads.length} new files` : ""})`,
-        tree: newTree.sha, parents: [head] }) });
-      await gh(`/git/refs/heads/${branch}`, { method: "PATCH", body: JSON.stringify({ sha: newCommit.sha }) });
-
-      state.pending.clear(); // previews stay so thumbnails keep working until the deploy finishes
+      state.pending.clear();
       state.deleted.clear();
-      state.loadedText = text;
       state.dirty = false;
       state.busy = false;
       renderList(); renderEditor(); refreshTop();
-      toast("게시했습니다. 1~2분 뒤 사이트에 반영됩니다.", false, 6000);
+      toast("게시했습니다. 사이트에 바로 반영됩니다.", false, 5000);
     } catch (err) {
       state.busy = false; refreshTop();
-      toast(err.status === 422 || err.status === 409 ? "저장소가 방금 바뀌어서 게시하지 못했습니다. 다시 눌러주세요.\n" + err.message : err.message, true);
+      toast(err.message, true);
     }
   }
 
-  /* ---------- settings panel ---------- */
-  const cfgInputs = $$("[data-cfg]");
-  cfgInputs.forEach(inp => { inp.value = state.cfg[inp.dataset.cfg] || ""; });
-  const readCfg = () => cfgInputs.forEach(inp => { state.cfg[inp.dataset.cfg] = inp.value.trim() || (inp.dataset.cfg === "branch" ? "main" : ""); });
-  $("[data-toggle-settings]").addEventListener("click", () => { const s = $("[data-settings]"); s.hidden = !s.hidden; });
-  $("[data-connect]").addEventListener("click", () => { readCfg(); connect(); });
-  $("[data-disconnect]").addEventListener("click", () => {
-    state.cfg.token = ""; state.connected = false;
-    $('[data-cfg="token"]').value = "";
-    saveCfg(); refreshTop();
-    toast("이 브라우저에서 토큰을 지웠습니다");
+  /* ---------- lock screen ---------- */
+  const lockEl = $("[data-lock]"), loginForm = $("[data-login]"), loginError = $("[data-login-error]");
+  function lock(message = "") {
+    state.token = "";
+    try { localStorage.removeItem(TOKEN_KEY); } catch (e) {}
+    lockEl.hidden = false;
+    document.body.classList.add("is-locked");
+    loginError.textContent = message;
+    $("[data-password]").value = "";
+    $("[data-password]").focus();
+  }
+  async function unlock() {
+    lockEl.hidden = true;
+    document.body.classList.remove("is-locked");
+    if (!state.dirty) {
+      try { load((await api("/work")).projects); if (state.projects.length) select(0); }
+      catch (err) { toast("프로젝트를 불러오지 못했습니다: " + err.message, true); }
+    }
+    refreshTop();
+  }
+  loginForm.addEventListener("submit", async e => {
+    e.preventDefault();
+    const btn = $("button", loginForm);
+    btn.disabled = true; loginError.textContent = "";
+    try {
+      const { token } = await api("/login", { method: "POST", body: JSON.stringify({ password: $("[data-password]").value }), headers: { "Content-Type": "application/json" } });
+      state.token = token;
+      try { localStorage.setItem(TOKEN_KEY, token); } catch (err) {}
+      await unlock();
+    } catch (err) {
+      loginError.textContent = err.status === 401 ? "비밀번호가 맞지 않습니다."
+        : err.status === 429 ? "틀린 시도가 너무 많습니다. 1시간 뒤에 다시 해주세요."
+        : err.message;
+      $("[data-password]").select();
+    }
+    btn.disabled = false;
+  });
+  $("[data-logout]").addEventListener("click", () => {
+    if (state.dirty && !confirm("저장 안 된 변경이 있습니다. 그래도 잠글까요?")) return;
+    state.dirty = false;
+    lock();
   });
   $("[data-publish]").addEventListener("click", publish);
   window.addEventListener("beforeunload", e => { if (state.dirty) { e.preventDefault(); e.returnValue = ""; } });
 
   /* ---------- boot ---------- */
   (async () => {
-    try {
-      const res = await fetch(`${DATA_PATH}?t=${Date.now()}`, { cache: "no-store" });
-      if (!res.ok) throw new Error(res.status);
-      load(await res.text());
-      if (state.projects.length) select(0);
-    } catch (e) {
-      state.projects = [];
-      renderList(); renderEditor();
-    }
-    refreshTop();
-    if (state.cfg.token) await connect(true);
-    else $("[data-settings]").hidden = false;
+    renderList(); renderEditor();
+    document.body.classList.add("is-locked");
+    if (!state.token) return;
+    try { await api("/session"); await unlock(); }
+    catch (err) { if (err.status !== 401) lock(err.message); }
   })();
 })();

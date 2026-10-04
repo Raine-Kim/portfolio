@@ -1,10 +1,19 @@
 {
-  // Cloudflare Workers static-assets deploy (Workers Builds runs `npx wrangler deploy`)
+  // Cloudflare Worker: static site + a small API for the /admin page.
+  // Projects and uploaded media live in the KV namespace below.
   "name": "portfolio",
+  "main": "src/worker.js",
   "compatibility_date": "2026-09-01",
   "assets": {
-    "directory": "./",
+    "directory": "./public",
+    "binding": "ASSETS",
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "404-page"
-  }
+  },
+  "kv_namespaces": [
+    { "binding": "STORE", "id": "6360b8dbd21e499a9ea8c08a7493173d" }
+  ]
+  // Secrets (set with `npx wrangler secret put <NAME>`, never committed):
+  //   ADMIN_PASSWORD   password for /admin
+  //   SESSION_SECRET   random string used to sign login sessions
 }

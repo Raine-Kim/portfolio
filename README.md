@@ -1,7 +1,7 @@
 # Sunghyun (Raine) Kim — Portfolio
 
 Web Designer / Front-end Developer 포트폴리오 사이트입니다.
-빌드 과정 없는 순수 **HTML / CSS / JavaScript**라서 Cloudflare Pages에 그대로 올리면 됩니다.
+빌드 과정 없는 순수 **HTML / CSS / JavaScript** 사이트이고, Cloudflare Workers로 호스팅합니다.
 
 - **컬러**: PANTONE 11-4201 *Cloud Dancer*(2026 올해의 컬러) 배경 + PANTONE 17-1230 *Mocha Mousse* + Tangerine / Digital Lavender 포인트
 - **폰트**: Geist, Instrument Serif (이탤릭), Geist Mono
@@ -11,51 +11,65 @@ Web Designer / Front-end Developer 포트폴리오 사이트입니다.
 ## 폴더 구조
 
 ```
-index.html          메인 페이지
-admin.html          프로젝트 관리 페이지 (/admin)
-css/, js/           스타일과 스크립트
-data/projects.js    프로필, 서비스, 프로세스, 스킬
-data/work.js        Selected work 프로젝트 목록 (admin 페이지가 저장)
-media/              사진, 영상, 이력서 PDF
-_headers            Cloudflare Pages 캐시/보안 헤더
+public/               사이트 파일 (Cloudflare가 그대로 서비스)
+  index.html          메인 페이지
+  admin.html          프로젝트 관리 페이지 (/admin)
+  css/, js/           스타일과 스크립트
+  data/projects.js    프로필, 서비스, 프로세스, 스킬
+  data/work.js        샘플 프로젝트 목록 (admin에서 한 번도 저장하지 않았을 때만 사용)
+  media/              프로필 사진, 이력서 PDF 등
+src/worker.js         admin용 API (로그인, 프로젝트 저장, 사진·영상 업로드)
+wrangler.jsonc        Cloudflare Worker 설정
 ```
 
 ## 프로젝트 올리고 수정하기 — /admin
 
-사이트 주소 뒤에 `/admin` 을 붙여 엽니다. 프로젝트 추가·수정·삭제·순서 변경, 커버 이미지와 호버 영상, 상세 갤러리(사진·영상·YouTube/Vimeo 링크), 담당 범위(%)를 화면에서 편집할 수 있습니다.
+사이트 주소 뒤에 `/admin` 을 붙여 열고 비밀번호를 입력합니다.
 
-**게시하기**를 누르면 올린 파일과 `data/work.js` 가 GitHub 저장소에 커밋 하나로 저장되고, Cloudflare가 1~2분 안에 다시 배포합니다.
+- 프로젝트 추가·수정·복제·삭제·순서 변경
+- 커버 이미지, 호버 영상, 상세 갤러리(사진·영상·YouTube/Vimeo 링크)
+- 담당 범위(%) 편집
+- **게시하기**를 누르면 바로 사이트에 반영됩니다 (다시 배포할 필요 없음).
 
-### 처음 한 번: GitHub 토큰 연결
+프로젝트 목록과 올린 파일은 Cloudflare KV(무료)에 저장됩니다.
 
-1. GitHub → Settings → Developer settings → Fine-grained tokens → **Generate new token**
-2. **Repository access**: Only select repositories → 이 저장소만 선택
-3. **Permissions → Repository permissions → Contents**: Read and write
-4. 만든 토큰을 admin 페이지의 **GitHub 연결** 칸에 붙여넣고 연결
+| 무료 한도 | |
+| --- | --- |
+| 파일 하나 | 25MB까지. 더 큰 영상은 YouTube/Vimeo 링크로 추가 |
+| 전체 저장 용량 | 1GB |
+| 저장 횟수 | 하루 1,000번 (파일 1개 = 1번) |
 
-- 토큰은 그 브라우저에만 저장되고 api.github.com 으로만 전송됩니다. 토큰이 없으면 누구도 저장할 수 없습니다.
-- 공용 컴퓨터에서는 작업 후 **토큰 지우기**를 누르세요.
-- 파일은 하나당 25MB까지입니다 (Cloudflare Pages 제한). 더 큰 영상은 YouTube/Vimeo에 올리고 **영상 링크 추가**를 쓰세요.
+### 비밀번호
+
+비밀번호는 저장소에 없고 Cloudflare 시크릿으로만 저장됩니다. 바꾸려면:
+
+```bash
+npx wrangler secret put ADMIN_PASSWORD
+```
+
+틀린 비밀번호는 1시간에 10번까지만 시도할 수 있습니다. 로그인은 그 브라우저에서 30일 동안 유지됩니다.
 
 ### 프로필 사진, 이력서, 쇼릴
 
-`media/` 에 파일을 올리고 `data/projects.js` 의 `profile.portrait`, `profile.resume`, `profile.showreel` 에 경로를 적습니다.
+`public/media/` 에 파일을 넣고 `public/data/projects.js` 의 `profile.portrait`, `profile.resume`, `profile.showreel` 에 경로(`media/...`)를 적은 뒤 배포합니다.
 
 ## 로컬에서 보기
 
-```bash
-npx serve .
+`.dev.vars` 파일에 로컬용 값을 넣고 실행합니다.
+
+```
+ADMIN_PASSWORD=0000
+SESSION_SECRET=아무-문자열
 ```
 
-## Cloudflare Pages 배포
+```bash
+npx wrangler dev
+```
 
-1. Cloudflare 대시보드 → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**
-2. 이 저장소 선택
-3. 빌드 설정
-   - Framework preset: **None**
-   - Build command: *(비워두기)*
-   - Build output directory: **/**
-4. **Save and Deploy** → `*.pages.dev` 주소가 생깁니다.
-5. 도메인을 연결하려면: 프로젝트 → **Custom domains** → **Set up a custom domain**
+## 배포
 
-이후 `main` 브랜치에 푸시할 때마다 자동으로 배포됩니다.
+`main` 브랜치에 푸시하면 Cloudflare Workers Builds가 `npx wrangler deploy` 로 배포합니다. 직접 배포하려면:
+
+```bash
+npx wrangler deploy
+```
