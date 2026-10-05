@@ -180,7 +180,7 @@
     const gallery = (p.gallery || []).filter(g => g && g.src);
     $("[data-case]").innerHTML = `
       <header class="case__hero" style="--p-color:${esc(p.color || "#A47864")}">
-        <span class="mono case__cat">${esc(p.category)} — ${esc(p.year)}</span>
+        <span class="mono case__cat">${esc(p.category)}${p.year ? " — " + esc(p.year) : ""}</span>
         <h2 class="case__title" id="case-title">${esc(p.title)}</h2>
         <p class="case__type">${esc(p.type || "")}</p>
         <p class="case__summary">${esc(p.summary || "")}</p>

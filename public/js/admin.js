@@ -62,7 +62,7 @@
   function toInternal(p) {
     return {
       slug: p.slug || "", title: p.title || "", type: p.type || "", category: p.category || baseCategories[0],
-      year: p.year || new Date().getFullYear(), color: p.color || SWATCHES[0], summary: p.summary || "",
+      year: p.year || "", color: p.color || SWATCHES[0], summary: p.summary || "",
       scopeRows: Object.entries(p.scope || {}).map(([k, v]) => [k, Number(v) || 0]),
       tools: (p.tools || []).join(", "), link: p.link || "", cover: p.cover || "", coverVideo: p.coverVideo || "",
       gallery: (p.gallery || []).filter(g => g && g.src).map(g => ({ type: g.type || "image", src: g.src, caption: g.caption || "" })),
@@ -384,7 +384,7 @@
     if (li && e.target === li && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); select(+li.dataset.i); }
   });
   $("[data-add]").addEventListener("click", () => {
-    const p = toInternal({ scope: Object.fromEntries(DEFAULT_SCOPE), color: SWATCHES[state.projects.length % SWATCHES.length] });
+    const p = toInternal({ year: new Date().getFullYear(), scope: Object.fromEntries(DEFAULT_SCOPE), color: SWATCHES[state.projects.length % SWATCHES.length] });
     p.autoSlug = true;
     state.projects.unshift(p);
     markDirty(); select(0);
